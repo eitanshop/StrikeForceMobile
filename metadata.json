@@ -1,0 +1,6 @@
+{
+  "name": "Strike Force Mobile",
+  "description": "A high-fidelity 3D First-Person Shooter inspired by Counter-Strike. Features mobile touch controls, physics-based movement, enemy AI, and a tactical environment.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
