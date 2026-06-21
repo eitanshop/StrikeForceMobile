@@ -4,6 +4,7 @@ import { Vector3, Raycaster, Matrix3 } from 'three';
 import { controlsRef, useGameStore } from '../store';
 import { Weapon } from './Weapon';
 import { resolveCollision } from '../colliders';
+import { sfx } from '../sfx';
 
 const SHOOT_DELAYS = {
   rifle: 150,
@@ -117,6 +118,8 @@ export const Player = () => {
         lastShootTime.current = Date.now();
         actions.decrementAmmo();
         setFlash(3); // Show muzzle flash for 3 frames
+        
+        sfx.playShoot(weapon);
 
         // Raycast shooting
         raycaster.current.setFromCamera({ x: 0, y: 0 }, camera);
@@ -126,6 +129,7 @@ export const Player = () => {
         const hit = intersects.find(i => i.object.userData && i.object.userData.type === 'enemy');
         if (hit && hit.object.userData.onHit) {
           hit.object.userData.onHit(WEAPON_DAMAGE[weapon]);
+          sfx.playHitEnemy();
         }
 
         const anyHit = intersects[0];
@@ -155,13 +159,28 @@ export const Player = () => {
             const normalMatrix = new Matrix3().getNormalMatrix(anyHit.object.matrixWorld);
             const worldNormal = anyHit.face ? anyHit.face.normal.clone().applyMatrix3(normalMatrix).normalize() : new Vector3(0, 1, 0);
 
+            let decalSize = 0.08;
+            let decalColor = '#111';
+            if (weapon === 'laser') {
+              decalSize = 0.05;
+              decalColor = '#00ff00';
+            } else if (weapon === 'plasma') {
+              decalSize = 0.4;
+              decalColor = '#ff00ff';
+            }
+
             actions.addDecal({
               position: [anyHit.point.x, anyHit.point.y, anyHit.point.z],
-              normal: [worldNormal.x, worldNormal.y, worldNormal.z]
+              normal: [worldNormal.x, worldNormal.y, worldNormal.z],
+              size: decalSize,
+              color: decalColor
             });
+            sfx.playHitWall();
+            
             // explosion for plasma
             if (weapon === 'plasma') {
               actions.addExplosion({ position: [anyHit.point.x, anyHit.point.y, anyHit.point.z], time: Date.now() });
+              sfx.playExplosion();
             }
           }
         } else {
@@ -224,9 +243,33 @@ export const Player = () => {
     playerPosition.current.y += velocityY.current * dt;
     playerPosition.current.z += direction.z * dt;
 
+    if (isOnGround && direction.lengthSq() > 0.01) {
+      sfx.playFootstep();
+    }
+
     // 4. Resolve level collider hit and sliding
     const resolved = resolveCollision(playerPosition.current, 0.5);
     playerPosition.current.copy(resolved);
+
+    const level = useGameStore.getState().level;
+    const enemiesTotal = useGameStore.getState().enemiesTotal;
+    const enemiesKilled = useGameStore.getState().enemiesKilled;
+    
+    // Check level progression win condition
+    if (enemiesTotal > 0 && enemiesKilled >= enemiesTotal) {
+      let doorPos = new Vector3(0, 0, -24.5);
+      if (level > 1) {
+        doorPos = new Vector3(10, 0, 0);
+      }
+      
+      // If close to door, advance level
+      const dToDoor = playerPosition.current.distanceTo(doorPos);
+      if (dToDoor < 3.0) {
+        actions.nextLevel();
+        // Reset player pos
+        playerPosition.current.set(0, 0, 10);
+      }
+    }
 
     // 5. Sync Camera to Physics Body (eye height is 1.6 above ground)
     camera.position.set(playerPosition.current.x, playerPosition.current.y + 1.6, playerPosition.current.z);

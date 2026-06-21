@@ -5,7 +5,7 @@ import { useGameStore, controlsRef } from '../store';
 import { Crosshair, Shield, RefreshCw, Play, Skull } from 'lucide-react';
 
 export const UI = () => {
-  const { isPlaying, isGameOver, score, health, ammo, weapon, actions } = useGameStore();
+  const { isPlaying, isGameOver, score, health, ammo, weapon, level, enemiesTotal, enemiesKilled, actions } = useGameStore();
 
   const handleJump = (e: React.SyntheticEvent) => { e.preventDefault(); controlsRef.current.jump = true; };
   const handleShootStart = (e: React.SyntheticEvent) => { e.preventDefault(); controlsRef.current.shoot = true; };
@@ -19,6 +19,26 @@ export const UI = () => {
       default: return 30;
     }
   };
+
+  const levelObjectiveMet = enemiesTotal > 0 && enemiesKilled >= enemiesTotal;
+
+  if (level > 3) {
+    return (
+      <div className="absolute inset-0 flex items-center justify-center z-50 bg-black/80 backdrop-blur-md">
+        <div className="text-center text-white p-8 border border-green-500/30 rounded-xl bg-gray-900/90 shadow-2xl shadow-green-900/50">
+          <div className="flex justify-center mb-4"><Shield size={64} className="text-green-500" /></div>
+          <h1 className="text-5xl font-bold mb-2 text-green-500 tracking-tighter uppercase">MISSION ACCOMPLISHED</h1>
+          <p className="text-3xl mb-8 font-mono">Final Score: {score}</p>
+          <button 
+            onClick={actions.reset}
+            className="px-12 py-4 bg-green-600 hover:bg-green-500 text-black font-bold rounded-lg text-xl transition flex items-center gap-2 mx-auto uppercase tracking-wider active:scale-95 transform"
+          >
+            <RefreshCw /> Play Again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (isGameOver) {
     return (
@@ -60,7 +80,7 @@ export const UI = () => {
       <div className="crosshair"></div>
 
       <div className="absolute top-0 left-0 w-full p-4 flex justify-between items-start z-50 pointer-events-none">
-        <div className="flex items-center gap-4 bg-black/60 backdrop-blur-sm p-3 rounded-lg shadow-lg">
+        <div className="flex items-center gap-4 bg-black/60 backdrop-blur-sm p-3 rounded-lg shadow-lg border border-white/10">
             <div className="flex items-center gap-2 text-white pr-4 border-r border-gray-500">
                 <Shield className="w-6 h-6 text-green-500" />
                 <span className="text-2xl font-bold font-mono">{health}</span>
@@ -70,6 +90,22 @@ export const UI = () => {
                 <span className="text-2xl font-bold font-mono text-yellow-500">{score}</span>
             </div>
         </div>
+
+        <div className="flex flex-col items-center">
+            <div className="bg-black/60 backdrop-blur-sm px-6 py-2 rounded-t-lg border-t border-x border-white/10">
+               <span className="text-white font-mono font-bold tracking-widest uppercase">Level {level}</span>
+            </div>
+            <div className={`bg-black/80 backdrop-blur-sm px-6 py-3 rounded-lg border border-white/10 ${levelObjectiveMet ? 'border-green-500 shadow-[0_0_15px_rgba(0,255,0,0.3)]' : ''}`}>
+               {levelObjectiveMet ? (
+                   <span className="text-green-500 font-bold tracking-widest uppercase animate-pulse">AREA CLEARED - PROCEED TO EXIT</span>
+               ) : (
+                   <span className="text-red-500 font-bold tracking-widest uppercase">ELIMINATE TARGETS: {enemiesTotal - enemiesKilled} LEFT</span>
+               )}
+            </div>
+        </div>
+        
+        {/* Placeholder to balance the flex layout */}
+        <div className="w-48"></div>
       </div>
 
       <TouchLook />

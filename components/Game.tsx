@@ -7,6 +7,8 @@ import { Enemy } from './Enemy';
 import { Vector3, Quaternion, Mesh } from 'three';
 import { useGameStore } from '../store';
 
+import { sfx } from '../sfx';
+
 const Effects = () => {
   const decals = useGameStore(s => s.decals);
   const bullets = useGameStore(s => s.bullets);
@@ -62,12 +64,54 @@ const Effects = () => {
         pos.add(norm.clone().multiplyScalar(0.01));
         const quaternion = new Quaternion().setFromUnitVectors(new Vector3(0, 0, 1), norm);
 
-        return (
-          <mesh key={d.id} position={pos} quaternion={quaternion}>
-            <circleGeometry args={[d.size || 0.08, 8]} />
-            <meshBasicMaterial color={d.color || "#111"} transparent opacity={0.8} depthWrite={false} />
-          </mesh>
-        );
+        if (d.color === 'red') {
+          return (
+            <group key={d.id} position={pos} quaternion={quaternion}>
+              <mesh><circleGeometry args={[d.size || 0.5, 9]} /><meshBasicMaterial color="#7a0101" transparent opacity={0.9} depthWrite={false} /></mesh>
+              <mesh position={[0.2, 0.1, 0.01]}><circleGeometry args={[(d.size||0.5)*0.5, 7]} /><meshBasicMaterial color="#910000" transparent opacity={0.8} depthWrite={false} /></mesh>
+              <mesh position={[-0.15, -0.2, 0.01]}><circleGeometry args={[(d.size||0.5)*0.3, 5]} /><meshBasicMaterial color="#570000" transparent opacity={0.8} depthWrite={false} /></mesh>
+            </group>
+          );
+        } else if (d.color === '#ff00ff') {
+          return (
+             <group key={d.id} position={pos} quaternion={quaternion}>
+               <mesh>
+                 <circleGeometry args={[d.size || 0.3, 16]} />
+                 <meshBasicMaterial color="#220022" transparent opacity={0.9} depthWrite={false} />
+               </mesh>
+               <mesh position={[0,0,0.01]}>
+                  <circleGeometry args={[(d.size || 0.3)*0.5, 12]} />
+                  <meshBasicMaterial color="#ff00ff" transparent opacity={0.8} depthWrite={false} />
+               </mesh>
+             </group>
+          );
+        } else if (d.color === '#00ff00') {
+          return (
+             <group key={d.id} position={pos} quaternion={quaternion}>
+               <mesh>
+                 <circleGeometry args={[d.size || 0.05, 8]} />
+                 <meshBasicMaterial color="#111" transparent opacity={0.8} depthWrite={false} />
+               </mesh>
+               <mesh position={[0,0,0.01]}>
+                  <circleGeometry args={[(d.size || 0.05)*0.3, 8]} />
+                  <meshBasicMaterial color="#00ff00" transparent opacity={0.8} depthWrite={false} />
+               </mesh>
+             </group>
+          );
+        } else {
+          return (
+             <group key={d.id} position={pos} quaternion={quaternion}>
+               <mesh>
+                 <circleGeometry args={[d.size || 0.08, 8]} />
+                 <meshBasicMaterial color="#111" transparent opacity={0.9} depthWrite={false} />
+               </mesh>
+               <mesh position={[0,0,0.01]}>
+                  <circleGeometry args={[(d.size || 0.08)*0.4, 8]} />
+                  <meshBasicMaterial color="#000" transparent opacity={0.9} depthWrite={false} />
+               </mesh>
+             </group>
+          );
+        }
       })}
 
       {bullets.map((b) => {
@@ -127,16 +171,11 @@ const EnemySpawner = () => {
     const [playerPos, setPlayerPos] = useState(new Vector3());
     const isPlaying = useGameStore(s => s.isPlaying);
     const score = useGameStore(s => s.score);
+    const level = useGameStore(s => s.level);
+    const registerEnemy = useGameStore(s => s.actions.registerEnemy);
 
-    // Dynamic enemy spawning
-    const [enemies, setEnemies] = useState<{id: number, pos: [number, number, number]}[]>([
-        {id: 1, pos: [10, 2, -20]},
-        {id: 2, pos: [-10, 2, -20]},
-        {id: 3, pos: [-15, 2, 15]},
-        {id: 4, pos: [20, 2, 0]},
-        {id: 5, pos: [0, 2, 20]},
-    ]);
-    const nextEnemyId = useRef(6);
+    // Static enemies per level instead of continuous spawning
+    const [enemies, setEnemies] = useState<{id: number, pos: [number, number, number]}[]>([]);
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -148,29 +187,54 @@ const EnemySpawner = () => {
     }, [camera]);
 
     useEffect(() => {
-        if (!isPlaying) return;
-        const spawner = setInterval(() => {
-            setEnemies(current => {
-                // If we've spawned less than 30 overall (or currently alive)
-                if (current.length < 30) {
-                    const angle = Math.random() * Math.PI * 2;
-                    const distance = 25 + Math.random() * 15;
-                    const rx = playerPos.x + Math.cos(angle) * distance;
-                    const rz = playerPos.z + Math.sin(angle) * distance;
-                    return [...current, { id: nextEnemyId.current++, pos: [rx, 2, rz] }];
-                }
-                return current;
-            });
-        }, 1500); 
-        return () => clearInterval(spawner);
-    }, [isPlaying, playerPos]);
+        if (!isPlaying) {
+            sfx.stopBGM();
+            return;
+        }
+        
+        sfx.startBGM();
+        
+        let initialEnemies: {id: number, pos: [number, number, number]}[] = [];
+        if (level === 1) {
+            initialEnemies = [
+                {id: 1, pos: [10, 2, -20]},
+                {id: 2, pos: [-10, 2, -20]},
+                {id: 3, pos: [-15, 2, 15]},
+                {id: 4, pos: [20, 2, 0]},
+                {id: 5, pos: [0, 2, 20]},
+            ];
+        } else if (level === 2) {
+            initialEnemies = [
+                {id: 6, pos: [0, 2, 15]},
+                {id: 7, pos: [15, 2, 15]},
+                {id: 8, pos: [-15, 2, 15]},
+                {id: 9, pos: [0, 2, -15]},
+                {id: 10, pos: [15, 2, -15]},
+                {id: 11, pos: [-15, 2, -15]},
+            ];
+        } else {
+            initialEnemies = [
+                {id: 12, pos: [5, 2, 5]},
+                {id: 13, pos: [-5, 2, 5]},
+                {id: 14, pos: [0, 2, -5]},
+            ];
+        }
+
+        setEnemies(initialEnemies);
+        
+        // Register them all
+        for (let i = 0; i < initialEnemies.length; i++) {
+            registerEnemy();
+        }
+
+    }, [isPlaying, level, registerEnemy]);
 
     if (!isPlaying) return null;
 
     return (
         <group>
             {enemies.map((e) => (
-                <Enemy key={e.id} position={e.pos} playerPos={playerPos} />
+                <Enemy key={`${level}-${e.id}`} position={e.pos} playerPos={playerPos} />
             ))}
         </group>
     )
@@ -204,7 +268,7 @@ export const Game = () => {
         >
         <Suspense fallback={null}>
           <Sky sunPosition={[100, 20, 100]} turbidity={0.1} rayleigh={0.5} />
-          <ambientLight intensity={0.5} />
+          <ambientLight intensity={1.5} />
           <pointLight position={[10, 10, 10]} intensity={1} castShadow />
           <directionalLight 
             position={[-5, 10, 5]} 

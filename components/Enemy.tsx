@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import { Vector3, Mesh } from 'three';
 import { useGameStore } from '../store';
 import { resolveCollision } from '../colliders';
+import { sfx } from '../sfx';
 
 interface EnemyProps {
   position: [number, number, number];
@@ -26,28 +27,36 @@ export const Enemy: React.FC<EnemyProps> = ({ position, playerPos }) => {
     if (health <= 0 && !dead && meshRef.current) {
       setDead(true);
       actions.addScore(100);
+      actions.killEnemy();
+      sfx.playExplosion();
       
       const pos = meshRef.current.position;
       
       // Add explosion effect
       actions.addExplosion({ position: [pos.x, pos.y, pos.z], time: Date.now() });
       
-      // Add blood decal
-      actions.addDecal({
-        position: [pos.x, 0.05, pos.z],
-        normal: [0, 1, 0],
-        color: 'red',
-        size: 2 + Math.random() * 2
-      });
+      // Add big blood splatters
+      for (let i = 0; i < 3; i++) {
+        actions.addDecal({
+          position: [pos.x + (Math.random() - 0.5) * 2, 0.05, pos.z + (Math.random() - 0.5) * 2],
+          normal: [0, 1, 0],
+          color: 'red',
+          size: 2 + Math.random() * 2
+        });
+      }
       
-      // Spawn body parts
-      for (let i = 0; i < 4; i++) {
+      // Spawn extra body parts
+      for (let i = 0; i < 15; i++) {
         actions.addBodyPart({
-          position: [pos.x, pos.y + 1, pos.z],
+          position: [
+            pos.x + (Math.random() - 0.5), 
+            pos.y + 0.5 + Math.random() * 1.5, 
+            pos.z + (Math.random() - 0.5)
+          ],
           velocity: [
-            (Math.random() - 0.5) * 10,
-            Math.random() * 10 + 5,
-            (Math.random() - 0.5) * 10
+            (Math.random() - 0.5) * 15,
+            Math.random() * 15 + 8,
+            (Math.random() - 0.5) * 15
           ],
           rotation: [Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI],
           time: Date.now()

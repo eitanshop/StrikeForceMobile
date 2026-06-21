@@ -39,6 +39,9 @@ interface GameStore {
   health: number;
   ammo: number;
   weapon: WeaponType;
+  level: number;
+  enemiesTotal: number;
+  enemiesKilled: number;
   decals: DecalData[];
   bullets: BulletData[];
   explosions: ExplosionData[];
@@ -51,6 +54,9 @@ interface GameStore {
     decrementAmmo: () => void;
     reload: () => void;
     setWeapon: (weapon: WeaponType) => void;
+    nextLevel: () => void;
+    registerEnemy: () => void;
+    killEnemy: () => void;
     reset: () => void;
     addDecal: (decal: Omit<DecalData, 'id'>) => void;
     addBullet: (bullet: Omit<BulletData, 'id'>) => void;
@@ -70,12 +76,15 @@ export const useGameStore = create<GameStore>((set) => ({
   health: 100,
   ammo: 30,
   weapon: 'rifle',
+  level: 1,
+  enemiesTotal: 0,
+  enemiesKilled: 0,
   decals: [],
   bullets: [],
   explosions: [],
   bodyParts: [],
   actions: {
-    startGame: () => set({ isPlaying: true, isGameOver: false, health: 100, score: 0, ammo: 30, decals: [], bullets: [], explosions: [], bodyParts: [] }),
+    startGame: () => set({ isPlaying: true, isGameOver: false, health: 100, score: 0, ammo: 30, level: 1, enemiesTotal: 0, enemiesKilled: 0, decals: [], bullets: [], explosions: [], bodyParts: [] }),
     endGame: () => set({ isPlaying: false, isGameOver: true }),
     addScore: (points) => set((state) => ({ score: state.score + points })),
     takeDamage: (damage) => set((state) => {
@@ -88,7 +97,13 @@ export const useGameStore = create<GameStore>((set) => ({
     decrementAmmo: () => set((state) => ({ ammo: Math.max(0, state.ammo - 1) })),
     reload: () => set((state) => ({ ammo: state.weapon === 'rifle' ? 30 : state.weapon === 'laser' ? 100 : 5 })),
     setWeapon: (weapon) => set({ weapon, ammo: weapon === 'rifle' ? 30 : weapon === 'laser' ? 100 : 5 }),
-    reset: () => set({ isPlaying: false, isGameOver: false, score: 0, health: 100, ammo: 30, weapon: 'rifle', decals: [], bullets: [], explosions: [], bodyParts: [] }),
+    nextLevel: () => set((state) => ({ level: state.level + 1, enemiesTotal: 0, enemiesKilled: 0, health: 100, decals: [], bullets: [], explosions: [], bodyParts: [] })),
+    registerEnemy: () => set((state) => ({ enemiesTotal: state.enemiesTotal + 1 })),
+    killEnemy: () => set((state) => {
+      const killed = state.enemiesKilled + 1;
+      return { enemiesKilled: killed };
+    }),
+    reset: () => set({ isPlaying: false, isGameOver: false, score: 0, health: 100, ammo: 30, weapon: 'rifle', level: 1, enemiesTotal: 0, enemiesKilled: 0, decals: [], bullets: [], explosions: [], bodyParts: [] }),
     addDecal: (decal) => set((state) => ({ decals: [...state.decals, { ...decal, id: nextId++ }].slice(-50) })),
     addBullet: (bullet) => set((state) => ({ bullets: [...state.bullets, { ...bullet, id: nextId++ }].slice(-50) })),
     addExplosion: (exp) => set((state) => ({ explosions: [...state.explosions, { ...exp, id: nextId++ }].slice(-10) })),
